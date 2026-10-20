@@ -9,8 +9,5 @@
   "dependencies": {
     "sass": "^1.101.0",
     "vite": "^8.1.4"
-  },
-  "devDependencies": {
-    "tar": "^7.5.22"
   }
 }

@@ -1,0 +1,55 @@
+name: Build release asset
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check release version
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must be vMAJOR.MINOR.PATCH (or MAJOR.MINOR.PATCH)"
+            exit 1
+          fi
+
+          minimum_version="$(printf '%s\n' 1.0.0 "$version" | sort -V | head -n 1)"
+          if [[ "$minimum_version" == "1.0.0" ]]; then
+            echo "supported=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping releases older than 1.0.0."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.version.outputs.supported == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.version.outputs.supported == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build site and archive
+        if: steps.version.outputs.supported == 'true'
+        run: |
+          npm ci
+          npm run build
+          tar -czf placeholder.tar.gz -C dist .
+          tar -tzf placeholder.tar.gz
+
+      - name: Upload archive to release
+        if: steps.version.outputs.supported == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" placeholder.tar.gz --clobber

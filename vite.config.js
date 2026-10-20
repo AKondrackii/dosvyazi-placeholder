@@ -1,29 +1,5 @@
-import { resolve, join } from 'node:path'
-import { create } from 'tar'
-import { readdirSync, rmSync, renameSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
-
-function packDist(archiveName) {
-  let outDir
-  return {
-    name: 'pack-dist',
-    apply: 'build',
-    configResolved(config) {
-      outDir = config.build.outDir
-    },
-    async closeBundle() {
-      const tmp = `.${archiveName}.tmp`
-      const entries = readdirSync(outDir)
-
-      // внутри архива всё лежит в папке dist/
-      await create({ gzip: true, file: tmp, cwd: outDir }, entries)
-
-      // чистим dist и оставляем только архив
-      for (const e of entries) rmSync(join(outDir, e), { recursive: true, force: true })
-      renameSync(tmp, join(outDir, archiveName))
-    },
-  }
-}
 
 export default defineConfig({
   appType: 'mpa',
@@ -58,8 +34,5 @@ export default defineConfig({
         }
       }
     }
-  },
-  plugins: [
-    packDist('placeholder.tar.gz')
-  ],
+  }
 })
